@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logic Master Mini V3</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; user-select: none; }
+        body { background: #000; color: #fff; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        
+        .app-container {
+            width: 100vw;
+            max-width: 450px;
+            height: 100vh;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        /* โซนแสดงผลลัพธ์พยากรณ์วงกลมใหญ่ด้านบน */
+        .prediction-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 35px; 
+        }
+
+        .main-circle {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 54px;
+            font-weight: 900;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        .main-circle.p-bg { background: #0056b3; box-shadow: 0 0 20px #007bff; }
+        .main-circle.b-bg { background: #a71d2a; box-shadow: 0 0 20px #dc3545; }
+
+        /* แถวแสดงผลสถิติตัวเลขและป้ายประวัติ */
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 10px;
+            padding: 0 4px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .text-p { color: #007bff; }
+        .text-t { color: #2ecc71; }
+        .text-b { color: #dc3545; }
+        
+        .history-text { 
+            background: #222;
+            color: #ffc107; 
+            font-size: 12px; 
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-text:active { background: #333; }
+
+        /* กระดาน Bead Plate ขนาด 6x12 */
+        .board-wrapper {
+            background: #111;
+            border: 2px solid #222;
+            border-radius: 12px;
+            padding: 6px;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+        .bead-plate {
+            display: grid;
+            grid-template-rows: repeat(6, 1fr);
+            grid-template-columns: repeat(12, 1fr);
+            grid-auto-flow: column; 
+            gap: 4px;
+            width: 100%;
+            aspect-ratio: 12 / 6;
+        }
+        .cell {
+            background: #222;
+            border-radius: 50%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .cell.P { background: #007bff; }
+        .cell.B { background: #dc3545; }
+        .cell.T { background: #2ecc71; }
+
+        /* แผงควบคุมทั้งหมดด้านล่าง - ดันระยะจากก้นจอขึ้นมาอีก 15% (รวมเป็น 90px) */
+        .control-panel {
+            margin-bottom: 90px; /* ปรับเพิ่มจาก 45px เป็น 90px เพื่อดันปุ่มทั้งหมดขึ้นสู่อีกขั้น */
+        }
+
+        /* โซนปุ่มกดรับข้อมูลหลัก P T B */
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .btn-main {
+            flex: 1;
+            border: none;
+            border-radius: 10px;
+            height: 55px;
+            font-size: 26px;
+            font-weight: 900;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .btn-main:active { transform: scale(0.95); }
+        .btn-main.P { background: #007bff; border-bottom: 3px solid #0056b3; }
+        .btn-main.T { background: #2ecc71; border-bottom: 3px solid #1e8449; }
+        .btn-main.B { background: #dc3545; border-bottom: 3px solid #a71d2a; }
+
+        /* ปุ่มควบคุมด้านล่าง ย้อนกลับ/ล้างข้อมูล */
+        .action-group {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-sub {
+            flex: 1;
+            background: #222;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-sub.clear { color: #ff5f5f; }
+        .btn-sub:active { background: #333; }
+
+        /* หน้าต่างดูประวัติไม้แบบ Pop-up (Modal) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #181818;
+            border: 1px solid #333;
+            border-radius: 12px;
+            width: 85%;
+            max-width: 360px;
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 12px;
+            background: #222;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: #ffc107;
+        }
+        .modal-close {
+            background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; font-weight: bold;
+        }
+        .modal-body {
+            padding: 12px;
+            overflow-y: auto;
+            flex-grow: 1;
+            font-size: 14px;
+        }
+        .history-item {
+            padding: 8px 4px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+        }
+        .h-win { color: #2ecc71; font-weight: bold; }
+        .h-loss { color: #e74c3c; font-weight: bold; }
+        .empty-text { color: #666; text-align: center; padding: 20px 0; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="prediction-zone">
+        <div id="display-circle" class="main-circle"> </div>
+    </div>
+
+    <div class="info-bar">
+        <div>
+            <span class="text-p">P: <span id="count-p">0</span></span>&nbsp;
+            <span class="text-t">T: <span id="count-t">0</span></span>&nbsp;
+            <span class="text-b">B: <span id="count-b">0</span></span>
+        </div>
+        <div class="history-text" onclick="openModal()">
+             📊 ดูประวัติไม้ <span id="win-loss-ratio">W:0 L:0</span>
+        </div>
+    </div>
+
+    <div class="board-wrapper">
+        <div class="bead-plate" id="grid-board"></div>
+    </div>
+
+    <div class="control-panel">
+        <div class="input-group">
+            <button class="btn-main P" onclick="addResult('P')">P</button>
+            <button class="btn-main T" onclick="addResult('T')">T</button>
+            <button class="btn-main B" onclick="addResult('B')">B</button>
+        </div>
+
+        <div class="action-group">
+            <button class="btn-sub" onclick="undo()">ย้อนกลับ</button>
+            <button class="btn-sub clear" onclick="resetAll()">ล้างข้อมูลทั้งหมด</button>
+        </div>
+    </div>
+</div>
+
+<div id="historyModal" class="modal" onclick="closeModalOutside(event)">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>📋 รายละเอียดประวัติไม้</span>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body" id="modal-list">
+            </div>
+    </div>
+</div>
+
+<script>
+    const patterns = {
+        "P1_MMMMMMM": "MMMMMMM", "P2_TTTTTTT": "TTTTTTT",
+        "P3_MMMTMMM": "MMMTMMM", "P4_TTTMTTT": "TTTMTTT",
+        "P5_MMMTTMM": "MMMTTMM", "P6_TTTMMTT": "TTTMMTT",
+        "P7_MTTTMMT": "MTTTMMT", "P8_TMMMTTM": "TMMMTTM"
+    };
+    const patternOrder = Object.keys(patterns);
+    const STEP_BACK = 7;
+    let history = JSON.parse(localStorage.getItem('floating_bal_v4')) || [];
+    let lockedPattern = null;
+
+    function addResult(val) {
+        history.push(val);
+        updateLogic();
+        saveAndRender();
+    }
+
+    function updateLogic() {
+        if (history.length < STEP_BACK + 1) { lockedPattern = null; return; }
+        
+        let bestPattern = null;
+        let minDiff = 100;
+
+        patternOrder.forEach(pName => {
+            let wins = 0, total = 0;
+            for (let i = STEP_BACK; i < history.length; i++) {
+                if (checkResultAt(pName, i)) wins++;
+                total++;
+            }
+            if (total > 0) {
+                let diff = Math.abs(50 - ((wins / total) * 100));
+                if (diff < minDiff) { minDiff = diff; bestPattern = pName; }
+            }
+        });
+        lockedPattern = bestPattern;
+    }
+
+    function checkResultAt(pName, index) {
+        const patternStr = patterns[pName];
+        const stepIdx = (index - STEP_BACK) % 7;
+        const logic = patternStr[stepIdx];
+        const baseVal = history[index - STEP_BACK];
+        const prediction = (logic === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
+        return history[index] === prediction;
+    }
+
+    function renderBoard() {
+        const board = document.getElementById('grid-board');
+        board.innerHTML = '';
+        
+        let totalCells = 6 * 12; 
+        let pCount = 0, tCount = 0, bCount = 0;
+        let wCount = 0, lCount = 0;
+
+        history.forEach(item => {
+            if (item === 'P') pCount++;
+            if (item === 'T') tCount++;
+            if (item === 'B') bCount++;
+        });
+
+        const modalList = document.getElementById('modal-list');
+        modalList.innerHTML = '';
+        let roundCounter = 1;
+
+        for (let i = STEP_BACK; i < history.length; i++) {
+            if (lockedPattern) {
+                const isWin = checkResultAt(lockedPattern, i);
+                const stepIdx = (i - STEP_BACK) % 7;
+                const baseVal = history[i - STEP_BACK];
+                const pred = (patterns[lockedPattern][stepIdx] === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'history-item';
+                if (isWin) {
+                    wCount++;
+                    itemDiv.innerHTML = `<span>รอบที่ ${roundCounter}: สูตรให้ [${pred}] ออก [${history[i]}]</span> <span class="h-win">ชนะ ✅</span>`;
+                } else {
+                    lCount++;
+                    itemDiv.innerHTML = `<span>รอบที่ ${roundCounter}: สูตรให้ [${pred}] ออก [${history[i]}]</span> <span class="h-loss">แพ้ ❌</span>`;
+                }
+                modalList.appendChild(itemDiv);
+                roundCounter++;
+            }
+        }
+
+        if (modalList.innerHTML === '') {
+            modalList.innerHTML = `<div class="empty-text">ยังไม่มีข้อมูลประวัติไม้ (รอสะสมครบ 8 ตา)</div>`;
+        }
+
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            if (i < history.length) {
+                cell.classList.add(history[i]);
+                cell.innerText = history[i];
+            }
+            board.appendChild(cell);
+        }
+
+        document.getElementById('count-p').innerText = pCount;
+        document.getElementById('count-t').innerText = tCount;
+        document.getElementById('count-b').innerText = bCount;
+        document.getElementById('win-loss-ratio').innerText = `W:${wCount} L:${lCount}`;
+
+        const circle = document.getElementById('display-circle');
+        circle.className = 'main-circle';
+
+        if (history.length < STEP_BACK) {
+            circle.innerText = history.length > 0 ? history.length : ' ';
+        } else if (history.length === STEP_BACK) {
+            circle.innerText = '7';
+        } else if (lockedPattern) {
+            const i = history.length;
+            const stepIdx = (i - STEP_BACK) % 7;
+            const baseVal = history[i - STEP_BACK];
+            
+            if (baseVal) {
+                const pred = (patterns[lockedPattern][stepIdx] === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
+                circle.innerText = pred;
+                circle.classList.add(pred === 'P' ? 'p-bg' : 'b-bg');
+            } else {
+                circle.innerText = ' ';
+            }
+        } else {
+            circle.innerText = ' ';
+        }
+    }
+
+    function openModal() {
+        document.getElementById('historyModal').style.display = 'flex';
+    }
+    function closeModal() {
+        document.getElementById('historyModal').style.display = 'none';
+    }
+    function closeModalOutside(e) {
+        if (e.target.id === 'historyModal') closeModal();
+    }
+
+    function undo() { history.pop(); updateLogic(); saveAndRender(); }
+    function resetAll() { if(confirm("คุณต้องการล้างข้อมูลสถิติทั้งหมดใช่หรือไม่?")) { history = []; lockedPattern = null; saveAndRender(); } }
+    
+    function saveAndRender() {
+        localStorage.setItem('floating_bal_v4', JSON.stringify(history));
+        renderBoard();
+    }
+
+    updateLogic();
+    renderBoard();
+</script>
+
+</body>
+</html>
