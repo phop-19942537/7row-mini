@@ -105,9 +105,9 @@
         .cell.B { background: #dc3545; }
         .cell.T { background: #2ecc71; }
 
-        /* แผงควบคุมทั้งหมดด้านล่าง - ดันระยะจากก้นจอขึ้นมาอีก 15% (รวมเป็น 90px) */
+        /* แผงควบคุมทั้งหมดด้านล่าง - ดันระยะขึ้นมา 90px */
         .control-panel {
-            margin-bottom: 90px; /* ปรับเพิ่มจาก 45px เป็น 90px เพื่อดันปุ่มทั้งหมดขึ้นสู่อีกขั้น */
+            margin-bottom: 90px; 
         }
 
         /* โซนปุ่มกดรับข้อมูลหลัก P T B */
@@ -261,21 +261,27 @@
     let history = JSON.parse(localStorage.getItem('floating_bal_v4')) || [];
     let lockedPattern = null;
 
+    // ตัวแปรเก็บประวัติที่คัดเอาเฉพาะ P และ B ออกมาเพื่อใช้คำนวณลอจิกหลังบ้านโดยตรง (ตัด T ทิ้ง)
+    let calcHistory = [];
+
     function addResult(val) {
         history.push(val);
         updateLogic();
         saveAndRender();
     }
 
+    // ฟังก์ชันคำนวณและดึงสูตรที่ดีที่สุด โดยจะคำนวณจากประวัติที่ไม่มี T เท่านั้น
     function updateLogic() {
-        if (history.length < STEP_BACK + 1) { lockedPattern = null; return; }
+        calcHistory = history.filter(item => item === 'P' || item === 'B');
+        
+        if (calcHistory.length < STEP_BACK + 1) { lockedPattern = null; return; }
         
         let bestPattern = null;
         let minDiff = 100;
 
         patternOrder.forEach(pName => {
             let wins = 0, total = 0;
-            for (let i = STEP_BACK; i < history.length; i++) {
+            for (let i = STEP_BACK; i < calcHistory.length; i++) {
                 if (checkResultAt(pName, i)) wins++;
                 total++;
             }
@@ -287,13 +293,14 @@
         lockedPattern = bestPattern;
     }
 
+    // เช็คผลแพ้ชนะอิงตามตัวแปร calcHistory ที่ไม่มี T ปนอยู่
     function checkResultAt(pName, index) {
         const patternStr = patterns[pName];
         const stepIdx = (index - STEP_BACK) % 7;
         const logic = patternStr[stepIdx];
-        const baseVal = history[index - STEP_BACK];
+        const baseVal = calcHistory[index - STEP_BACK];
         const prediction = (logic === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
-        return history[index] === prediction;
+        return calcHistory[index] === prediction;
     }
 
     function renderBoard() {
@@ -304,31 +311,33 @@
         let pCount = 0, tCount = 0, bCount = 0;
         let wCount = 0, lCount = 0;
 
+        // 1. สถิติจำนวนเม็ดสีบนหน้าจอหลักยังนับ T ตามปกติ
         history.forEach(item => {
             if (item === 'P') pCount++;
             if (item === 'T') tCount++;
             if (item === 'B') bCount++;
         });
 
+        // 2. คำนวณหาค่าชนะแพ้สะสม และสร้างประวัติไม้ โดยอ้างอิงจาก calcHistory (ที่ไร้ T ปะปน)
         const modalList = document.getElementById('modal-list');
         modalList.innerHTML = '';
         let roundCounter = 1;
 
-        for (let i = STEP_BACK; i < history.length; i++) {
+        for (let i = STEP_BACK; i < calcHistory.length; i++) {
             if (lockedPattern) {
                 const isWin = checkResultAt(lockedPattern, i);
                 const stepIdx = (i - STEP_BACK) % 7;
-                const baseVal = history[i - STEP_BACK];
+                const baseVal = calcHistory[i - STEP_BACK];
                 const pred = (patterns[lockedPattern][stepIdx] === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
 
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'history-item';
                 if (isWin) {
                     wCount++;
-                    itemDiv.innerHTML = `<span>รอบที่ ${roundCounter}: สูตรให้ [${pred}] ออก [${history[i]}]</span> <span class="h-win">ชนะ ✅</span>`;
+                    itemDiv.innerHTML = `<span>รอบที่ ${roundCounter}: สูตรให้ [${pred}] ออก [${calcHistory[i]}]</span> <span class="h-win">ชนะ ✅</span>`;
                 } else {
                     lCount++;
-                    itemDiv.innerHTML = `<span>รอบที่ ${roundCounter}: สูตรให้ [${pred}] ออก [${history[i]}]</span> <span class="h-loss">แพ้ ❌</span>`;
+                    itemDiv.innerHTML = `<span>รอบที่ ${roundCounter}: สูตรให้ [${pred}] ออก [${calcHistory[i]}]</span> <span class="h-loss">แพ้ ❌</span>`;
                 }
                 modalList.appendChild(itemDiv);
                 roundCounter++;
@@ -336,9 +345,10 @@
         }
 
         if (modalList.innerHTML === '') {
-            modalList.innerHTML = `<div class="empty-text">ยังไม่มีข้อมูลประวัติไม้ (รอสะสมครบ 8 ตา)</div>`;
+            modalList.innerHTML = `<div class="empty-text">ยังไม่มีข้อมูลประวัติไม้ (รอสะสม P/B ครบ 8 ตา)</div>`;
         }
 
+        // วาดเม็ดสีสถิติลงตารางหลัก (แสดงผลทุกตัว P B T เพื่อให้ตรงตามที่ผู้ใช้ป้อน)
         for (let i = 0; i < totalCells; i++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
@@ -354,17 +364,20 @@
         document.getElementById('count-b').innerText = bCount;
         document.getElementById('win-loss-ratio').innerText = `W:${wCount} L:${lCount}`;
 
+        // 3. ควบคุมวงกลมพยากรณ์ขนาดยักษ์โดยอิงจากความยาวของ calcHistory (ไม่รวม T)
         const circle = document.getElementById('display-circle');
         circle.className = 'main-circle';
 
-        if (history.length < STEP_BACK) {
-            circle.innerText = history.length > 0 ? history.length : ' ';
-        } else if (history.length === STEP_BACK) {
+        if (calcHistory.length < STEP_BACK) {
+            // ถ้านับเฉพาะ P/B แล้วยังไม่ถึง 7 ตัว ให้โชว์จำนวน P/B ปัจจุบันที่บันทึกเข้าไปได้
+            circle.innerText = calcHistory.length > 0 ? calcHistory.length : ' ';
+        } else if (calcHistory.length === STEP_BACK) {
             circle.innerText = '7';
         } else if (lockedPattern) {
-            const i = history.length;
+            // เมื่อข้อมูลเฉพาะ P/B ครบตั้งแต่ 8 ตัวขึ้นไป นำสูตรมาพยากรณ์ล่วงหน้าตาถัดไปทันที
+            const i = calcHistory.length;
             const stepIdx = (i - STEP_BACK) % 7;
-            const baseVal = history[i - STEP_BACK];
+            const baseVal = calcHistory[i - STEP_BACK];
             
             if (baseVal) {
                 const pred = (patterns[lockedPattern][stepIdx] === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
@@ -378,15 +391,9 @@
         }
     }
 
-    function openModal() {
-        document.getElementById('historyModal').style.display = 'flex';
-    }
-    function closeModal() {
-        document.getElementById('historyModal').style.display = 'none';
-    }
-    function closeModalOutside(e) {
-        if (e.target.id === 'historyModal') closeModal();
-    }
+    function openModal() { document.getElementById('historyModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('historyModal').style.display = 'none'; }
+    function closeModalOutside(e) { if (e.target.id === 'historyModal') closeModal(); }
 
     function undo() { history.pop(); updateLogic(); saveAndRender(); }
     function resetAll() { if(confirm("คุณต้องการล้างข้อมูลสถิติทั้งหมดใช่หรือไม่?")) { history = []; lockedPattern = null; saveAndRender(); } }
@@ -396,6 +403,7 @@
         renderBoard();
     }
 
+    // เริ่มต้นระบบครั้งแรก
     updateLogic();
     renderBoard();
 </script>
