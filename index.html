@@ -2,849 +2,164 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>64-Pair Sniper Tracker - Same Pair Martingale</title>
+    <title>16-Pair (2^5) Sniper Tracker</title>
     <style>
-        * { box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-        body { background: transparent; color: #eee; margin: 0; padding: 0; overflow: hidden; }
-        
-        .card { 
-            background: #181818; 
-            width: 100vw; 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            border: 1px solid #333;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
-            position: relative;
-        }
-
-        .header { 
-            background: #222; 
-            padding: 8px; 
-            border-bottom: 1px solid #333; 
-            flex-shrink: 0; 
-        }
-
-        .status-bar { 
-            background: #111; 
-            color: #ffc107; 
-            padding: 8px; 
-            border-radius: 4px; 
-            font-size: 13px; 
-            font-weight: bold; 
-            text-align: center; 
-            margin-bottom: 6px;
-            border: 1px solid #444;
-            min-height: 42px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
-
-        .stats-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 10px;
-            margin-bottom: 6px;
-            padding: 0 4px;
-            color: #aaa;
-        }
-        .stats-row span b { color: #fff; font-size: 11px; }
-
-        .btn-group { display: flex; gap: 4px; margin-bottom: 4px; }
-        .btn { 
-            border: none; padding: 12px 0; border-radius: 6px; 
-            font-size: 16px; font-weight: 800; cursor: pointer; color: white; flex: 1; 
-        }
-        .btn-p { background: #007bff; border-bottom: 3px solid #0056b3; }
-        .btn-b { background: #dc3545; border-bottom: 3px solid #a71d2a; }
-        .btn:active { transform: translateY(2px); border-bottom: none; margin-bottom: 3px; }
-
-        .btn-action { 
-            background: #333; padding: 5px 8px; font-size: 10px; flex: none; 
-            color: #ccc; border-radius: 4px; border:none; cursor: pointer; font-weight: bold;
-        }
-        
-        .btn-sound {
-            background: #28a745; color: #fff; font-size: 10px; padding: 5px 8px; 
-            border-radius: 4px; border: none; cursor: pointer; font-weight: bold;
-        }
-        .btn-sound.muted { background: #6c757d; }
-
-        .content-area {
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-            overflow: hidden;
-        }
-
-        .history-log-box {
-            background: #141414;
-            border-bottom: 1px solid #333;
-            max-height: 100px;
-            min-height: 70px;
-            overflow-y: auto;
-            padding: 6px 10px;
-            font-size: 11px;
-            scrollbar-width: thin;
-        }
-        .log-item {
-            padding: 2px 0;
-            border-bottom: 1px solid #222;
-            display: flex;
-            justify-content: space-between;
-        }
-        .log-win { color: #2ecc71; font-weight: bold; }
-        .log-loss { color: #e74c3c; font-weight: bold; }
-
-        .table-container { 
-            flex-grow: 1; overflow-y: auto; overflow-x: auto; 
-            background: #0f0f0f; scrollbar-width: thin;
-        }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: center; white-space: nowrap; }
-        th { 
-            background: #222; color: #777; position: sticky; top: 0; 
-            padding: 6px 2px; z-index: 10; border-bottom: 1px solid #444; font-size: 9px;
-        }
-        
-        td { border-bottom: 1px solid #1f1f1f; padding: 4px 2px; font-weight: 600; }
-        
-        .p-text { color: #5fb0ff; }
-        .b-text { color: #ff5f5f; }
-        .win { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
-        .loss { background: rgba(231, 76, 60, 0.1); color: #e74c3c; }
-        
-        .locked-col { 
-            background: rgba(255, 193, 7, 0.15) !important; 
-            box-shadow: inset 0 0 0 1px rgba(255, 193, 7, 0.5);
-        }
-        .highlight-th { color: #ffc107 !important; background: #332b00 !important; }
-        
-        .next-bet { 
-            background: #ffc107; color: #000; padding: 2px 7px; 
-            border-radius: 3px; font-weight: 900; animation: blink 1s infinite alternate;
-        }
-        .step-badge {
-            background: #e67e22; color: #fff; padding: 1px 5px;
-            border-radius: 3px; font-size: 10px; margin-left: 4px;
-        }
-        .wait-status { color: #888; font-weight: normal; }
-
-        @keyframes blink {
-            from { opacity: 1; } to { opacity: 0.6; }
-        }
-
-        .modal {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: #222; padding: 15px; border-radius: 8px; width: 85%; max-width: 320px;
-            border: 1px solid #444; text-align: center;
-        }
-        .modal-content h3 { margin-top: 0; color: #ffc107; font-size: 16px; }
-        .setting-row { margin: 15px 0; display: flex; justify-content: space-between; align-items: center; }
-        .setting-row select { background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px; }
-        .btn-close { background: #007bff; color: #fff; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
-
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        body { background: #111; color: #fff; font-family: sans-serif; padding: 10px; margin: 0; }
+        .status { background: #222; padding: 12px; color: #ffc107; font-weight: bold; margin-bottom: 10px; border-radius: 6px; text-align: center; }
+        .btn-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        .btn { padding: 12px; font-size: 16px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; flex: 1; color: #fff; }
+        .btn-p { background: #007bff; } .btn-b { background: #dc3545; }
+        .btn-sub { background: #444; padding: 6px 12px; font-size: 12px; color: #ccc; border: none; border-radius: 4px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; text-align: center; }
+        th, td { border: 1px solid #333; padding: 5px 3px; white-space: nowrap; }
+        th { background: #222; color: #aaa; }
+        .win { color: #2ecc71; background: rgba(46,204,113,0.1); } 
+        .loss { color: #e74c3c; background: rgba(231,76,60,0.1); }
+        .active { background: #332b00 !important; color: #ffc107 !important; font-weight: bold; }
+        .p-color { color: #5fb0ff; } .b-color { color: #ff5f5f; }
     </style>
 </head>
 <body>
-<div class="card">
-    <div class="header">
-        <div id="next-info" class="status-bar">
-            <span>READY - ป้อนข้อมูล 7 ตาแรก</span>
-        </div>
-        
-        <div class="stats-row">
-            <span>WIN: <b id="stat-win">0</b></span>
-            <span>LOSS: <b id="stat-loss">0</b></span>
-            <span>RATE: <b id="stat-rate">0%</b></span>
-            <span>MAX STEP: <b id="stat-max-step">3 ไม้</b></span>
-        </div>
 
-        <div class="btn-group">
-            <button class="btn btn-p" onclick="addResult('P')">P</button>
-            <button class="btn btn-b" onclick="addResult('B')">B</button>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <button class="btn-action" onclick="undo()">Undo</button>
-                <button class="btn-action" onclick="resetAll()">Clear</button>
-                <button class="btn-action" onclick="openSettings()">⚙️ ตั้งค่า</button>
-            </div>
-            <button id="sound-btn" class="btn-sound" onclick="toggleSound()">🔊 เสียง: เปิด</button>
-        </div>
+    <div class="status" id="status">กรอกผล 6 ตาแรกเพื่อเริ่มสแกน (16 คู่ / 32 รูปแบบ)</div>
+    
+    <div class="btn-group">
+        <button class="btn btn-p" onclick="add('P')">P</button>
+        <button class="btn btn-b" onclick="add('B')">B</button>
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <button class="btn-sub" onclick="undo()">Undo</button>
+        <button class="btn-sub" onclick="resetAll()">Clear</button>
     </div>
 
-    <div class="content-area">
-        <div class="history-log-box" id="history-log-box">
-            <div style="color: #777; font-size: 10px; text-align: center;">--- ประวัติผลบันทึกรอบการยิงมาร์ติงเกล ---</div>
-        </div>
-
-        <div class="table-container" id="scroll-area">
-            <table>
-                <thead>
-                    <tr id="table-head">
-                        <th style="width:20px">#</th>
-                        <th style="width:30px; background:#111;">RES</th>
-                    </tr>
-                </thead>
-                <tbody id="data-table"></tbody>
-            </table>
-        </div>
+    <div style="overflow-x:auto;">
+        <table>
+            <thead><tr id="th-row"><th>#</th><th>RES</th></tr></thead>
+            <tbody id="tb-body"></tbody>
+        </table>
     </div>
-</div>
-
-<div id="settings-modal" class="modal">
-    <div class="modal-content">
-        <h3>⚙️ ตั้งค่าระบบมาร์ติงเกล</h3>
-        <div class="setting-row">
-            <label for="max-step-select">จำนวนไม้ทบสูงสุด:</label>
-            <select id="max-step-select" onchange="updateMaxStep(this.value)">
-                <option value="1">1 ไม้</option>
-                <option value="2">2 ไม้</option>
-                <option value="3" selected>3 ไม้</option>
-                <option value="4">4 ไม้</option>
-                <option value="5">5 ไม้</option>
-                <option value="6">6 ไม้</option>
-            </select>
-        </div>
-        <button class="btn-close" onclick="closeSettings()">ตกลง / บันทึก</button>
-    </div>
-</div>
 
 <script>
-    let soundEnabled = true;
-    let audioCtx = null;
-    let lastSignaledLength = -1; 
-
-    function initAudio() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
-    function toggleSound() {
-        soundEnabled = !soundEnabled;
-        const btn = document.getElementById('sound-btn');
-        if (soundEnabled) {
-            btn.innerText = "🔊 เสียง: เปิด";
-            btn.classList.remove('muted');
-            initAudio();
-            playAlertSound();
-        } else {
-            btn.innerText = "🔇 เสียง: ปิด";
-            btn.classList.add('muted');
+    const STEP_BACK = 6, MAX_STEP = 3;
+    let history = JSON.parse(localStorage.getItem('h_16pairs')) || [];
+    
+    // สร้าง 16 คู่ (32 รูปแบบไม่ซ้ำกันจาก 2^5)
+    const pairs = Array.from({length: 16}, (_, i) => {
+        let m = "", r = "";
+        for (let b = 4; b >= 0; b--) {
+            let set = (i >> b) & 1;
+            m += set ? "T" : "M"; 
+            r += set ? "M" : "T";
         }
-    }
-
-    function playAlertSound() {
-        if (!soundEnabled) return;
-        initAudio();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-
-        const now = audioCtx.currentTime;
-        const osc1 = audioCtx.createOscillator();
-        const gain1 = audioCtx.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(880, now);
-        gain1.gain.setValueAtTime(0.3, now);
-        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        osc1.connect(gain1);
-        gain1.connect(audioCtx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.15);
-
-        const osc2 = audioCtx.createOscillator();
-        const gain2 = audioCtx.createGain();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(1760, now + 0.2);
-        gain2.gain.setValueAtTime(0.4, now + 0.2);
-        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-        osc2.connect(gain2);
-        gain2.connect(audioCtx.destination);
-        osc2.start(now + 0.2);
-        osc2.stop(now + 0.5);
-    }
-
-    function generate64Pairs() {
-        const list = [];
-        for (let i = 0; i < 64; i++) {
-            let mainStr = "";
-            let mirrorStr = "";
-            for (let bit = 6; bit >= 0; bit--) {
-                const isSet = (i >> bit) & 1;
-                mainStr += isSet ? "T" : "M";
-                mirrorStr += isSet ? "M" : "T";
-            }
-            list.push({ name: `P${i + 1}`, main: mainStr, mirror: mirrorStr });
-        }
-        return list;
-    }
-
-    const pairs = generate64Pairs();
-    const STEP_BACK = 7;
-    let history = JSON.parse(localStorage.getItem('parallel_tracker_v64_h')) || [];
-    let maxMartingale = parseInt(localStorage.getItem('parallel_tracker_max_step')) || 3;
-    let signal = null; 
-
-    document.getElementById('max-step-select').value = maxMartingale;
-    document.getElementById('stat-max-step').innerText = maxMartingale + " ไม้";
-
-    const thr = document.getElementById('table-head');
-    pairs.forEach((p, idx) => {
-        const thMain = document.createElement('th');
-        thMain.id = `th-m-${idx}`;
-        thMain.innerText = `${p.name}.M`;
-        thr.appendChild(thMain);
-
-        const thMirror = document.createElement('th');
-        thMirror.id = `th-r-${idx}`;
-        thMirror.innerText = `${p.name}.R`;
-        thr.appendChild(thMirror);
+        return { name: `P${i+1}`, main: m, mirror: r };
     });
 
-    function addResult(val) {
-        initAudio();
-        history.push(val);
-        saveAndRender();
+    // สร้างหัวตาราง 16 คู่
+    const thr = document.getElementById('th-row');
+    pairs.forEach((p, i) => {
+        thr.innerHTML += `<th id="th-m-${i}">${p.name}.M</th><th id="th-r-${i}">${p.name}.R</th>`;
+    });
+
+    function add(val) { history.push(val); render(); }
+    function undo() { history.pop(); render(); }
+    function resetAll() { if(confirm("ล้างข้อมูลทั้งหมด?")) { history = []; render(); } }
+
+    function getPred(pattern, idx) {
+        let logic = pattern[(idx - STEP_BACK) % 5];
+        let base = history[idx - STEP_BACK];
+        return (logic === "M") ? base : (base === 'P' ? 'B' : 'P');
     }
 
-    function getPrediction(patternStr, index) {
-        const stepIdx = (index - STEP_BACK) % 7;
-        const logic = patternStr[stepIdx];
-        const baseVal = history[index - STEP_BACK];
-        return (logic === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
+    function isFail(pair, idx) {
+        if (idx <= STEP_BACK) return false;
+        let prev = idx - 1;
+        let side = (history[prev] === getPred(pair.main, prev)) ? 'main' : 'mirror';
+        return history[idx] !== getPred(pair[side], idx);
     }
 
-    function isFollowTrendFailed(pair, index) {
-        if (index <= STEP_BACK) return false; 
-        
-        const prevIdx = index - 1;
-        const predMainPrev = getPrediction(pair.main, prevIdx);
-        const isMainPrevWin = (history[prevIdx] === predMainPrev);
-        
-        const activeSide = isMainPrevWin ? 'main' : 'mirror';
-        
-        if (activeSide === 'main') {
-            const predMainCurr = getPrediction(pair.main, index);
-            return history[index] !== predMainCurr; 
-        } else {
-            const predMirrorCurr = getPrediction(pair.mirror, index);
-            return history[index] !== predMirrorCurr; 
-        }
-    }
+    function render() {
+        localStorage.setItem('h_16pairs', JSON.stringify(history));
+        let activeSignal = null, step = 1, currentSignal = null;
 
-    // ฟังก์ชันหาฝั่งที่เพิ่งออก ✅ ล่าสุดของ Pair นั้น ณ ตา index - 1
-    function getLatestWinSide(pair, index) {
-        const prevIdx = index - 1;
-        const predMainPrev = getPrediction(pair.main, prevIdx);
-        const isMainPrevWin = (history[prevIdx] === predMainPrev);
-        return isMainPrevWin ? 'main' : 'mirror';
-    }
-
-    // 3. ระบบจำลองการยิง Martingale ยึดตาม Pair เดิมและตามฝั่ง ✅ ล่าสุดไปเรื่อยๆ
-    function processMartingaleRounds() {
-        let logs = [];
-        let totalWin = 0, totalLoss = 0;
-        let activeSignal = null;
-        let currentStep = 1;
-        let roundCount = 1;
-
-        let i = STEP_BACK + 3;
-        while (i <= history.length) {
+        // สแกนหาหลุด 3 ตาติด และเดินเงินทบไม้ล็อค Pair เดิม
+        for (let i = STEP_BACK + 3; i <= history.length; i++) {
             if (!activeSignal) {
-                // สแกนหา Pair ที่หลุดผิด 3 ตาติดเพื่อเริ่มไม้ 1
                 for (let idx = 0; idx < pairs.length; idx++) {
-                    const p = pairs[idx];
-                    const checkIdx = i - 1;
-                    if (checkIdx >= STEP_BACK + 2) {
-                        if (isFollowTrendFailed(p, checkIdx) &&
-                            isFollowTrendFailed(p, checkIdx - 1) &&
-                            isFollowTrendFailed(p, checkIdx - 2)) {
-                            
-                            // ล็อค Pair นี้ไว้
-                            activeSignal = { pairIdx: idx };
-                            currentStep = 1;
-                            break;
-                        }
+                    let c = i - 1;
+                    if (c >= STEP_BACK + 2 && isFail(pairs[idx], c) && isFail(pairs[idx], c-1) && isFail(pairs[idx], c-2)) {
+                        activeSignal = { pairIdx: idx }; 
+                        step = 1; 
+                        break;
                     }
                 }
             }
-
             if (activeSignal) {
-                const p = pairs[activeSignal.pairIdx];
-                
-                // หาฝั่งที่เพิ่งออก ✅ ล่าสุดใน Pair เดิม ณ ตานี้
-                const currentWinSide = getLatestWinSide(p, i);
-                const pred = getPrediction(p[currentWinSide], i);
+                let p = pairs[activeSignal.pairIdx];
+                let side = (history[i-1] === getPred(p.main, i-1)) ? 'main' : 'mirror';
+                let pred = getPred(p[side], i);
 
                 if (i < history.length) {
-                    const actual = history[i];
-
-                    if (actual === pred) {
-                        // ชนะในไม้นี้ -> บันทึกแล้วปลดล็อค Pair
-                        logs.push({ round: roundCount++, status: 'WIN', step: currentStep, pairIdx: activeSignal.pairIdx });
-                        totalWin++;
-                        activeSignal = null;
-                        currentStep = 1;
-                    } else {
-                        // แพ้ในไม้นี้ -> อยู่ใน Pair เดิมต่อ ทบไม้ถัดไป
-                        if (currentStep < maxMartingale) {
-                            currentStep++;
-                        } else {
-                            // หลุดครบ Max Step (BUST) -> บันทึกแล้วปลดล็อค
-                            logs.push({ round: roundCount++, status: 'LOSS', step: maxMartingale, pairIdx: activeSignal.pairIdx });
-                            totalLoss++;
-                            activeSignal = null;
-                            currentStep = 1;
-                        }
-                    }
+                    if (history[i] === pred) { activeSignal = null; step = 1; }
+                    else if (++step > MAX_STEP) { activeSignal = null; step = 1; }
                 } else if (i === history.length) {
-                    // กำลังรอผลตาปัจจุบัน (ส่งข้อมูลให้ UI แสดงสัญญาณยิง)
-                    signal = { pairIdx: activeSignal.pairIdx, pred: pred, step: currentStep };
+                    currentSignal = { pairIdx: activeSignal.pairIdx, pred, step };
                 }
             }
-
-            i++;
         }
 
-        if (!activeSignal) signal = null;
+        // แสดงผล Status
+        let st = document.getElementById('status');
+        if (history.length < STEP_BACK) {
+            st.innerText = `กรอกข้อมูลตั้งต้น: ${history.length}/${STEP_BACK}`;
+        } else if (currentSignal) {
+            st.innerHTML = `🎯 แทง PAIR ${currentSignal.pairIdx+1}: <span class="${currentSignal.pred==='P'?'p-color':'b-color'}">${currentSignal.pred==='P'?'PLAYER (P)':'BANKER (B)'}</span> (ไม้ ${currentSignal.step}/${MAX_STEP})`;
+        } else {
+            st.innerText = "☕ รอสัญญาณยิง (กำลังสแกน 16 คู่)...";
+        }
 
-        return { logs, totalWin, totalLoss };
-    }
-
-    function renderTable() {
-        const tbody = document.getElementById('data-table');
+        // วาดตาราง
+        let tbody = document.getElementById('tb-body');
         tbody.innerHTML = "";
-        
-        pairs.forEach((_, idx) => {
-            document.getElementById(`th-m-${idx}`).className = "";
-            document.getElementById(`th-r-${idx}`).className = "";
+        pairs.forEach((_, i) => {
+            document.getElementById(`th-m-${i}`).className = "";
+            document.getElementById(`th-r-${i}`).className = "";
         });
 
-        const mData = processMartingaleRounds();
-
-        if (signal && lastSignaledLength !== history.length) {
-            playAlertSound();
-            lastSignaledLength = history.length;
-        }
-
-        const displayCount = history.length + (history.length >= STEP_BACK ? 1 : 0);
-
-        for (let i = 0; i < displayCount; i++) {
-            const row = tbody.insertRow(-1);
-            row.insertCell(0).innerText = i + 1;
+        let rows = history.length + (history.length >= STEP_BACK ? 1 : 0);
+        for (let i = 0; i < rows; i++) {
+            let tr = tbody.insertRow();
+            tr.insertCell().innerText = i + 1;
             
-            const cellRes = row.insertCell(1);
-            cellRes.style.background = "#000";
-            if (i < history.length) {
-                cellRes.innerText = history[i];
-                cellRes.className = (history[i] === 'P' ? 'p-text' : 'b-text');
-            } else { 
-                cellRes.innerText = "?"; 
-            }
+            let resCell = tr.insertCell();
+            resCell.innerText = history[i] || "?";
+            if(history[i]) resCell.className = history[i] === 'P' ? 'p-color' : 'b-color';
 
             if (i >= STEP_BACK) {
                 pairs.forEach((p, idx) => {
-                    const cellM = row.insertCell(-1);
-                    const predM = getPrediction(p.main, i);
+                    let pM = getPred(p.main, i), pR = getPred(p.mirror, i);
+                    let cM = tr.insertCell(), cR = tr.insertCell();
                     
-                    const cellR = row.insertCell(-1);
-                    const predR = getPrediction(p.mirror, i);
-
-                    if (signal && i === history.length) {
-                        if (signal.pairIdx === idx) {
-                            cellM.classList.add('locked-col');
-                            cellR.classList.add('locked-col');
-                            document.getElementById(`th-m-${idx}`).classList.add('highlight-th');
-                            document.getElementById(`th-r-${idx}`).classList.add('highlight-th');
-                        }
+                    if (currentSignal && currentSignal.pairIdx === idx && i === history.length) {
+                        document.getElementById(`th-m-${idx}`).className = "active";
+                        document.getElementById(`th-r-${idx}`).className = "active";
                     }
 
                     if (i < history.length) {
-                        const isWinM = (history[i] === predM);
-                        cellM.className = isWinM ? "win" : "loss";
-                        cellM.innerHTML = `${predM}<br><sup>${isWinM?'✅':'❌'}</sup>`;
-
-                        const isWinR = (history[i] === predR);
-                        cellR.className = isWinR ? "win" : "loss";
-                        cellR.innerHTML = `${predR}<br><sup>${isWinR?'✅':'❌'}</sup>`;
+                        cM.className = (history[i] === pM) ? "win" : "loss";
+                        cM.innerText = `${pM} ${history[i]===pM?'✅':'❌'}`;
+                        cR.className = (history[i] === pR) ? "win" : "loss";
+                        cR.innerText = `${pR} ${history[i]===pR?'✅':'❌'}`;
                     } else {
-                        cellM.innerHTML = `<span class="${predM==='P'?'p-text':'b-text'}" style="opacity:0.4">${predM}</span>`;
-                        cellR.innerHTML = `<span class="${predR==='P'?'p-text':'b-text'}" style="opacity:0.4">${predR}</span>`;
+                        cM.innerText = pM; cR.innerText = pR;
                     }
                 });
             } else {
-                for(let j=0; j < pairs.length * 2; j++) row.insertCell(-1).innerText = "-";
-            }
-        }
-
-        updateUI(mData.totalWin, mData.totalLoss, mData.logs);
-        
-        if (signal) {
-            const targetTh = document.getElementById(`th-m-${signal.pairIdx}`);
-            if (targetTh) {
-                targetTh.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                for(let j=0; j<32; j++) tr.insertCell().innerText = "-";
             }
         }
     }
-
-    function updateUI(w, l, logs) {
-        document.getElementById('stat-win').innerText = w;
-        document.getElementById('stat-loss').innerText = l;
-        const rate = (w + l) > 0 ? ((w / (w + l)) * 100).toFixed(0) : 0;
-        document.getElementById('stat-rate').innerText = rate + "%";
-
-        const statusEl = document.getElementById('next-info');
-        if (history.length < STEP_BACK) {
-            statusEl.innerHTML = `<span class="wait-status">ฐานข้อมูลคีย์: ${history.length}/${STEP_BACK}</span>`;
-        } else if (signal) {
-            statusEl.innerHTML = `<div>PAIR ${signal.pairIdx + 1} แทงตาม: <span class="next-bet">${signal.pred === 'P' ? 'PLAYER (P)' : 'BANKER (B)'}</span> <span class="step-badge">ไม้ที่ ${signal.step}/${maxMartingale}</span></div>`;
-        } else {
-            statusEl.innerHTML = `<span class="wait-status">☕ รอสัญญาณ (สแกน 128 แพตเทิร์น)</span>`;
-        }
-
-        const logBox = document.getElementById('history-log-box');
-        if (logs.length === 0) {
-            logBox.innerHTML = `<div style="color: #777; font-size: 10px; text-align: center;">--- ยังไม่มีประวัติการยิงสไนเปอร์ ---</div>`;
-        } else {
-            let html = "";
-            logs.slice().reverse().forEach(item => {
-                if (item.status === 'WIN') {
-                    html += `<div class="log-item"><span>รอบที่ ${item.round} (PAIR ${item.pairIdx + 1})</span> <span class="log-win">ชนะ ไม้ ${item.step} ✅</span></div>`;
-                } else {
-                    html += `<div class="log-item"><span>รอบที่ ${item.round} (PAIR ${item.pairIdx + 1})</span> <span class="log-loss">แพ้ หลุดไม้ ${item.step} ❌</span></div>`;
-                }
-            });
-            logBox.innerHTML = html;
-        }
-    }
-
-    function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
-    function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
-    
-    function updateMaxStep(val) {
-        maxMartingale = parseInt(val);
-        localStorage.setItem('parallel_tracker_max_step', maxMartingale);
-        document.getElementById('stat-max-step').innerText = maxMartingale + " ไม้";
-        renderTable();
-    }
-
-    function undo() { history.pop(); saveAndRender(); }
-    function resetAll() { if(confirm("ต้องการล้างข้อมูลและประวัติทั้งหมดใช่ไหม?")) { history = []; signal = null; saveAndRender(); } }
-    
-    function saveAndRender() { 
-        localStorage.setItem('parallel_tracker_v64_h', JSON.stringify(history)); 
-        renderTable(); 
-        const container = document.getElementById('scroll-area');
-        container.scrollTop = container.scrollHeight;
-    }
-
-    renderTable();
+    render();
 </script>
-</body>
-</html>
-
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-        .btn-main {
-            flex: 1;
-            border: none;
-            border-radius: 10px;
-            height: 55px;
-            font-size: 26px;
-            font-weight: 900;
-            color: #fff;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        .btn-main:active { transform: scale(0.95); }
-        .btn-main.P { background: #007bff; border-bottom: 3px solid #0056b3; }
-        .btn-main.T { background: #2ecc71; border-bottom: 3px solid #1e8449; }
-        .btn-main.B { background: #dc3545; border-bottom: 3px solid #a71d2a; }
-
-        /* ปุ่มควบคุมด้านล่าง ย้อนกลับ/ล้างข้อมูล */
-        .action-group {
-            display: flex;
-            gap: 8px;
-        }
-        .btn-sub {
-            flex: 1;
-            background: #222;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 10px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn-sub.clear { color: #ff5f5f; }
-        .btn-sub:active { background: #333; }
-
-        /* หน้าต่างดูประวัติไม้แบบ Pop-up (Modal) */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background: #181818;
-            border: 1px solid #333;
-            border-radius: 12px;
-            width: 85%;
-            max-width: 360px;
-            max-height: 70vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .modal-header {
-            padding: 12px;
-            background: #222;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            color: #ffc107;
-        }
-        .modal-close {
-            background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; font-weight: bold;
-        }
-        .modal-body {
-            padding: 12px;
-            overflow-y: auto;
-            flex-grow: 1;
-            font-size: 14px;
-        }
-        .history-item {
-            padding: 8px 4px;
-            border-bottom: 1px solid #222;
-            display: flex;
-            justify-content: space-between;
-        }
-        .h-win { color: #2ecc71; font-weight: bold; }
-        .h-loss { color: #e74c3c; font-weight: bold; }
-        .empty-text { color: #666; text-align: center; padding: 20px 0; }
-    </style>
-</head>
-<body>
-
-<div class="app-container">
-    <div class="prediction-zone">
-        <div id="display-circle" class="main-circle"> </div>
-    </div>
-
-    <div class="info-bar">
-        <div>
-            <span class="text-p">P: <span id="count-p">0</span></span>&nbsp;
-            <span class="text-t">T: <span id="count-t">0</span></span>&nbsp;
-            <span class="text-b">B: <span id="count-b">0</span></span>
-        </div>
-        <div class="history-text" onclick="openModal()">
-             📊 ดูประวัติไม้ <span id="win-loss-ratio">W:0 L:0</span>
-        </div>
-    </div>
-
-    <div class="board-wrapper">
-        <div class="bead-plate" id="grid-board"></div>
-    </div>
-
-    <div class="control-panel">
-        <div class="input-group">
-            <button class="btn-main P" onclick="addResult('P')">P</button>
-            <button class="btn-main T" onclick="addResult('T')">T</button>
-            <button class="btn-main B" onclick="addResult('B')">B</button>
-        </div>
-
-        <div class="action-group">
-            <button class="btn-sub" onclick="undo()">ย้อนกลับ</button>
-            <button class="btn-sub clear" onclick="resetAll()">ล้างข้อมูลทั้งหมด</button>
-        </div>
-    </div>
-</div>
-
-<div id="historyModal" class="modal" onclick="closeModalOutside(event)">
-    <div class="modal-content">
-        <div class="modal-header">
-            <span>📋 รายละเอียดประวัติไม้</span>
-            <button class="modal-close" onclick="closeModal()">×</button>
-        </div>
-        <div class="modal-body" id="modal-list">
-            </div>
-    </div>
-</div>
-
-<script>
-    const patterns = {
-        "P1_MMMMMMM": "MMMMMMM", "P2_TTTTTTT": "TTTTTTT",
-        "P3_MMMTMMM": "MMMTMMM", "P4_TTTMTTT": "TTTMTTT",
-        "P5_MMMTTMM": "MMMTTMM", "P6_TTTMMTT": "TTTMMTT",
-        "P7_MTTTMMT": "MTTTMMT", "P8_TMMMTTM": "TMMMTTM"
-    };
-    const patternOrder = Object.keys(patterns);
-    const STEP_BACK = 7;
-    let history = JSON.parse(localStorage.getItem('floating_bal_v4')) || [];
-    let lockedPattern = null;
-
-    // ตัวแปรเก็บประวัติที่คัดเอาเฉพาะ P และ B ออกมาเพื่อใช้คำนวณลอจิกหลังบ้านโดยตรง (ตัด T ทิ้ง)
-    let calcHistory = [];
-
-    function addResult(val) {
-        history.push(val);
-        updateLogic();
-        saveAndRender();
-    }
-
-    // ฟังก์ชันคำนวณและดึงสูตรที่ดีที่สุด โดยจะคำนวณจากประวัติที่ไม่มี T เท่านั้น
-    function updateLogic() {
-        calcHistory = history.filter(item => item === 'P' || item === 'B');
-        
-        if (calcHistory.length < STEP_BACK + 1) { lockedPattern = null; return; }
-        
-        let bestPattern = null;
-        let minDiff = 100;
-
-        patternOrder.forEach(pName => {
-            let wins = 0, total = 0;
-            for (let i = STEP_BACK; i < calcHistory.length; i++) {
-                if (checkResultAt(pName, i)) wins++;
-                total++;
-            }
-            if (total > 0) {
-                let diff = Math.abs(50 - ((wins / total) * 100));
-                if (diff < minDiff) { minDiff = diff; bestPattern = pName; }
-            }
-        });
-        lockedPattern = bestPattern;
-    }
-
-    // เช็คผลแพ้ชนะอิงตามตัวแปร calcHistory ที่ไม่มี T ปนอยู่
-    function checkResultAt(pName, index) {
-        const patternStr = patterns[pName];
-        const stepIdx = (index - STEP_BACK) % 7;
-        const logic = patternStr[stepIdx];
-        const baseVal = calcHistory[index - STEP_BACK];
-        const prediction = (logic === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
-        return calcHistory[index] === prediction;
-    }
-
-    function renderBoard() {
-        const board = document.getElementById('grid-board');
-        board.innerHTML = '';
-        
-        let totalCells = 6 * 12; 
-        let pCount = 0, tCount = 0, bCount = 0;
-        let wCount = 0, lCount = 0;
-
-        // 1. สถิติจำนวนเม็ดสีบนหน้าจอหลักยังนับ T ตามปกติ
-        history.forEach(item => {
-            if (item === 'P') pCount++;
-            if (item === 'T') tCount++;
-            if (item === 'B') bCount++;
-        });
-
-        // 2. คำนวณหาค่าชนะแพ้สะสม และสร้างประวัติไม้ โดยอ้างอิงจาก calcHistory (ที่ไร้ T ปะปน)
-        const modalList = document.getElementById('modal-list');
-        modalList.innerHTML = '';
-        let roundCounter = 1;
-
-        for (let i = STEP_BACK; i < calcHistory.length; i++) {
-            if (lockedPattern) {
-                const isWin = checkResultAt(lockedPattern, i);
-                const stepIdx = (i - STEP_BACK) % 7;
-                const baseVal = calcHistory[i - STEP_BACK];
-                const pred = (patterns[lockedPattern][stepIdx] === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
-
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'history-item';
-                if (isWin) {
-                    wCount++;
-                    itemDiv.innerHTML = `<span>รอบที่ ${roundCounter}: สูตรให้ [${pred}] ออก [${calcHistory[i]}]</span> <span class="h-win">ชนะ ✅</span>`;
-                } else {
-                    lCount++;
-                    itemDiv.innerHTML = `<span>รอบที่ ${roundCounter}: สูตรให้ [${pred}] ออก [${calcHistory[i]}]</span> <span class="h-loss">แพ้ ❌</span>`;
-                }
-                modalList.appendChild(itemDiv);
-                roundCounter++;
-            }
-        }
-
-        if (modalList.innerHTML === '') {
-            modalList.innerHTML = `<div class="empty-text">ยังไม่มีข้อมูลประวัติไม้ (รอสะสม P/B ครบ 8 ตา)</div>`;
-        }
-
-        // วาดเม็ดสีสถิติลงตารางหลัก (แสดงผลทุกตัว P B T เพื่อให้ตรงตามที่ผู้ใช้ป้อน)
-        for (let i = 0; i < totalCells; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            if (i < history.length) {
-                cell.classList.add(history[i]);
-                cell.innerText = history[i];
-            }
-            board.appendChild(cell);
-        }
-
-        document.getElementById('count-p').innerText = pCount;
-        document.getElementById('count-t').innerText = tCount;
-        document.getElementById('count-b').innerText = bCount;
-        document.getElementById('win-loss-ratio').innerText = `W:${wCount} L:${lCount}`;
-
-        // 3. ควบคุมวงกลมพยากรณ์ขนาดยักษ์โดยอิงจากความยาวของ calcHistory (ไม่รวม T)
-        const circle = document.getElementById('display-circle');
-        circle.className = 'main-circle';
-
-        if (calcHistory.length < STEP_BACK) {
-            // ถ้านับเฉพาะ P/B แล้วยังไม่ถึง 7 ตัว ให้โชว์จำนวน P/B ปัจจุบันที่บันทึกเข้าไปได้
-            circle.innerText = calcHistory.length > 0 ? calcHistory.length : ' ';
-        } else if (calcHistory.length === STEP_BACK) {
-            circle.innerText = '7';
-        } else if (lockedPattern) {
-            // เมื่อข้อมูลเฉพาะ P/B ครบตั้งแต่ 8 ตัวขึ้นไป นำสูตรมาพยากรณ์ล่วงหน้าตาถัดไปทันที
-            const i = calcHistory.length;
-            const stepIdx = (i - STEP_BACK) % 7;
-            const baseVal = calcHistory[i - STEP_BACK];
-            
-            if (baseVal) {
-                const pred = (patterns[lockedPattern][stepIdx] === "M") ? baseVal : (baseVal === 'P' ? 'B' : 'P');
-                circle.innerText = pred;
-                circle.classList.add(pred === 'P' ? 'p-bg' : 'b-bg');
-            } else {
-                circle.innerText = ' ';
-            }
-        } else {
-            circle.innerText = ' ';
-        }
-    }
-
-    function openModal() { document.getElementById('historyModal').style.display = 'flex'; }
-    function closeModal() { document.getElementById('historyModal').style.display = 'none'; }
-    function closeModalOutside(e) { if (e.target.id === 'historyModal') closeModal(); }
-
-    function undo() { history.pop(); updateLogic(); saveAndRender(); }
-    function resetAll() { if(confirm("คุณต้องการล้างข้อมูลสถิติทั้งหมดใช่หรือไม่?")) { history = []; lockedPattern = null; saveAndRender(); } }
-    
-    function saveAndRender() {
-        localStorage.setItem('floating_bal_v4', JSON.stringify(history));
-        renderBoard();
-    }
-
-    // เริ่มต้นระบบครั้งแรก
-    updateLogic();
-    renderBoard();
-</script>
-
 </body>
 </html>
